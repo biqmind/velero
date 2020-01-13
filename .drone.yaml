@@ -1,0 +1,16 @@
+kind: pipeline
+name: build-velero
+steps:
+  - name: publish
+    image: plugins/docker
+    settings:
+      username: _json_key
+      password:
+        from_secret: gcr_pass
+      repo: gcr.io/the-racer-252607/velero
+      registry: gcr.io
+      tags:
+        - master
+    when: 
+      ref: [ refs/heads/feature/*, refs/tags/*,refs/heads/master ]
+      event: [ push, tag ]
