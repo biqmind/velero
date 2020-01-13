@@ -9,6 +9,7 @@ steps:
         from_secret: gcr_pass
       repo: gcr.io/the-racer-252607/velero
       registry: gcr.io
+      dockerfile: Dockerfile-velero
       tags:
         - master
     when: 
