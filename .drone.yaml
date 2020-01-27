@@ -1,6 +1,15 @@
+workspace:
+  base: /go
+  path: src/github.com/vmware-tanzu/velero
+
 kind: pipeline
 name: build-velero
 steps:
+  - name: compile
+    image: golang:1.13
+    commands:
+      - make local
+
   - name: publish
     image: plugins/docker
     settings:
