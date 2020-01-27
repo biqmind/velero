@@ -50,4 +50,6 @@ const (
 	// ResticVolumeNamespaceLabel is the label key used to identify which
 	// namespace a restic repository stores pod volume backups for.
 	ResticVolumeNamespaceLabel = "velero.io/volume-namespace"
+
+	RestoreForcePatchAnnotation = "velero.io/restore-patch"
 )

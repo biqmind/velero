@@ -11,7 +11,7 @@ steps:
     image: golang:1.13
     commands:
       - make local
-  
+
   - name: publish
     image: plugins/docker
     settings:

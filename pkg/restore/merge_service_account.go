@@ -17,13 +17,17 @@ package restore
 
 import (
 	"encoding/json"
+	"fmt"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	corev1api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
 // mergeServiceAccount takes a backed up serviceaccount and merges attributes into the current in-cluster service account.
@@ -32,7 +36,6 @@ func mergeServiceAccounts(fromCluster, fromBackup *unstructured.Unstructured) (*
 	desired := new(corev1api.ServiceAccount)
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(fromCluster.UnstructuredContent(), desired); err != nil {
 		return nil, errors.Wrap(err, "unable to convert from-cluster service account from unstructured to serviceaccount")
-
 	}
 
 	backupSA := new(corev1api.ServiceAccount)
@@ -135,4 +138,104 @@ func generatePatch(fromCluster, desired *unstructured.Unstructured) ([]byte, err
 	}
 
 	return patchBytes, nil
+}
+
+type PatchResult struct {
+	Patch             []byte
+	Current, Modified []byte
+	Original          []byte
+}
+
+// Unmodified looks at the contents of a patch to see wether or not it is an
+// empty patch and could thus potentially be skipped.
+// JSONMergePatch doesn't always cleanly merge, so we need to set up a set of
+// rules we can ignore.
+func (p *PatchResult) Unmodified() bool {
+	emptySets := []string{
+		"{\"metadata\":{\"creationTimestamp\":null},\"status\":null}",
+		"{\"metadata\":{\"creationTimestamp\":null}}",
+		"{\"metadata\":{\"annotations\":{}}}",
+		"{\"metadata\":{\"labels\":{}}}",
+		"{}",
+	}
+
+	patchString := string(p.Patch)
+	for _, s := range emptySets {
+		if patchString == s {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (p *PatchResult) String() string {
+	return fmt.Sprintf("\nPatch: %s \nCurrent: %s\nModified: %s\nOriginal: %s\n", p.Patch, p.Current, p.Modified, p.Original)
+}
+
+// CalculatePatch will tries to create a patch using 3-way merge strategy if possible
+func CalculatePatch(currentObject, modifiedObject runtime.Object) (*PatchResult, error) {
+	current, err := runtime.Encode(unstructured.UnstructuredJSONScheme, currentObject)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to convert current object to byte sequence")
+	}
+
+	modified, err := runtime.Encode(unstructured.UnstructuredJSONScheme, modifiedObject)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to convert current object to byte sequence")
+	}
+
+	original, err := getOriginalConfiguration(currentObject)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to get original configuration")
+	}
+
+	var patch []byte
+
+	switch currentObject.(type) {
+	default:
+		lookupPatchMeta, err := strategicpatch.NewPatchMetaFromStruct(modifiedObject)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to lookup patch meta")
+		}
+		patch, err = strategicpatch.CreateThreeWayMergePatch(original, modified, current, lookupPatchMeta, true)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to generate strategic merge patch")
+		}
+	case *unstructured.Unstructured:
+		patch, err = jsonmergepatch.CreateThreeWayJSONMergePatch(original, modified, current)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to generate merge patch")
+		}
+	}
+
+	return &PatchResult{
+		Patch:    patch,
+		Current:  current,
+		Modified: modified,
+		Original: original,
+	}, nil
+}
+
+const (
+	kubectlAppliedConfig = "kubectl.kubernetes.io/last-applied-configuration"
+)
+
+func getOriginalConfiguration(obj runtime.Object) ([]byte, error) {
+	annots, err := meta.NewAccessor().Annotations(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	if annots == nil {
+		return nil, nil
+	}
+
+	//assumiong last applied configuration is done using kubectl
+	original, ok := annots[kubectlAppliedConfig]
+	if !ok {
+		return nil, nil
+	}
+
+	return []byte(original), nil
 }
