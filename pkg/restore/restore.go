@@ -1090,37 +1090,26 @@ func (ctx *context) restoreItem(obj *unstructured.Unstructured, groupResource sc
 		addRestoreLabels(fromCluster, labels[velerov1api.RestoreNameLabel], labels[velerov1api.BackupNameLabel])
 
 		if !equality.Semantic.DeepEqual(fromCluster, obj) {
-			switch groupResource {
-			case kuberesource.ServiceAccounts:
-				desired, err := mergeServiceAccounts(fromCluster, obj)
+			annotations := obj.GetAnnotations()
+			dopatch := groupResource == kuberesource.ServiceAccounts ||
+				(annotations != nil && annotations[velerov1api.RestoreForcePatchAnnotation] != "")
+
+			if dopatch {
+				resetPatchAnnotation(obj) // remove the Annotations as only understood by Velero
+
+				err = patchResources(ctx, resourceClient, groupResource, fromCluster, obj)
 				if err != nil {
-					ctx.log.Infof("error merging secrets for ServiceAccount %s: %v", kube.NamespaceAndName(obj), err)
+					ctx.log.Infof("error applying patch for %s, '%v': %v", obj.GetKind(), kube.NamespaceAndName(obj), err)
 					warnings.Add(namespace, err)
 					return warnings, errs
 				}
 
-				patchBytes, err := generatePatch(fromCluster, desired)
-				if err != nil {
-					ctx.log.Infof("error generating patch for ServiceAccount %s: %v", kube.NamespaceAndName(obj), err)
-					warnings.Add(namespace, err)
-					return warnings, errs
-				}
-
-				if patchBytes == nil {
-					// In-cluster and desired state are the same, so move on to the next item
-					return warnings, errs
-				}
-
-				_, err = resourceClient.Patch(name, patchBytes)
-				if err != nil {
-					warnings.Add(namespace, err)
-				} else {
-					ctx.log.Infof("ServiceAccount %s successfully updated", kube.NamespaceAndName(obj))
-				}
-			default:
-				e := errors.Errorf("could not restore, %s. Warning: the in-cluster version is different than the backed-up version.", restoreErr)
-				warnings.Add(namespace, e)
+				ctx.log.Infof("%s, '%v' successfully patched", obj.GetKind(), kube.NamespaceAndName(obj))
+				return warnings, errs
 			}
+
+			e := errors.Errorf("could not restore, %s. Warning: the in-cluster version is different than the backed-up version.", restoreErr)
+			warnings.Add(namespace, e)
 			return warnings, errs
 		}
 
@@ -1350,4 +1339,47 @@ func (ctx *context) unmarshal(filePath string) (*unstructured.Unstructured, erro
 	}
 
 	return &obj, nil
+}
+
+func patchResources(ctx *context, c client.Patcher, gvk schema.GroupResource, live, obj *unstructured.Unstructured) (err error) {
+	var patchResult *PatchResult
+	resourceID := fmt.Sprintf("%v: '%v'", live.GetKind(), kube.NamespaceAndName(live))
+
+	switch gvk {
+	case kuberesource.ServiceAccounts:
+		desired, err := mergeServiceAccounts(live, obj)
+		if err != nil {
+			return err
+		}
+
+		patchBytes, err := generatePatch(live, desired)
+		if err != nil {
+			return errors.Wrapf(err, "calculating patch for %v", resourceID)
+		}
+
+		patchResult = &PatchResult{Patch: patchBytes}
+	default:
+		patchResult, err = CalculatePatch(live, obj)
+		if err != nil {
+			return errors.Wrapf(err, "calculating patch for %v", resourceID)
+		}
+	}
+
+	if patchResult.Unmodified() {
+		ctx.log.Infof("Looks like there is no changes for %s", resourceID)
+		return nil
+	}
+
+	ctx.log.Infof("Applying patch '%v' on %v", patchResult, resourceID)
+	_, err = c.Patch(live.GetName(), patchResult.Patch)
+	return err
+}
+
+func resetPatchAnnotation(obj metav1.Object) {
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		return
+	}
+	delete(annotations, velerov1api.RestoreForcePatchAnnotation)
+	obj.SetAnnotations(annotations)
 }

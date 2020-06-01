@@ -1,0 +1,29 @@
+workspace: 
+  base: /go
+  path: src/github.com/vmware-tanzu/velero
+
+kind: pipeline
+name: build
+type: docker
+
+steps:
+  - name: compile
+    image: golang:1.13
+    commands:
+      - make local
+
+  - name: publish
+    image: plugins/docker
+    settings:
+      username: _json_key
+      password:
+        from_secret: gcr_pass
+      repo: gcr.io/the-racer-252607/velero
+      registry: gcr.io
+      dockerfile: Dockerfile-velero
+      context: _output
+      tags:
+        - master
+    when: 
+      ref: [ refs/tags/*, refs/heads/cape ]
+      event: [ push, tag ]

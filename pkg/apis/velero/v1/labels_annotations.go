@@ -62,4 +62,6 @@ const (
 	// SourceClusterK8sMajorVersionAnnotation is the label key used to identify the k8s
 	// minor version of the backup , i.e. 16
 	SourceClusterK8sMinorVersionAnnotation = "velero.io/source-cluster-k8s-minor-version"
+
+	RestoreForcePatchAnnotation = "velero.io/restore-patch"
 )
