@@ -1,0 +1,54 @@
+name: Build and Push
+env:
+  TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+on:
+  push:
+    branches: [ restore-patch ]
+
+  release:
+    types:
+      - edited
+      - prereleased
+      - released
+
+jobs:
+
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: set git config
+      run: |
+        git config --global url."https://${{ github.repository_owner }}:${{ github.token }}@github.com".insteadOf "https://github.com"
+        echo ::set-env name=RELEASE_TAG::$(echo ${GITHUB_REF##*/})
+  build:
+    name: Build
+    needs: setup
+    if: github.event.action != 'released'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '^1.13.1'
+    - uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: build-binaries
+      run: |
+        git config --global url."https://debianmaster:${TOKEN}@github.com".insteadOf "https://github.com"
+        make local
+    - uses: docker/build-push-action@v1
+      name: publish-image
+      with:
+        repository: the-racer-252607/velero
+        tag_with_ref: true
+        registry: gcr.io
+        dockerfile: Dockerfile-velero
+        username: _json_key
+        password: ${{secrets.GCR_DOCKER_REG}}
