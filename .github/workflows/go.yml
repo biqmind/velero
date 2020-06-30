@@ -22,7 +22,7 @@ jobs:
       run: |
         git config --global url."https://${{ github.repository_owner }}:${{ github.token }}@github.com".insteadOf "https://github.com"
         echo ::set-env name=RELEASE_TAG::$(echo ${GITHUB_REF##*/})
-        
+
   build:
     name: Build
     needs: setup
@@ -69,6 +69,6 @@ jobs:
         repository: the-racer-252607/velero
         tag_with_ref: true
         registry: gcr.io
-        dockerfile: Dockerfile-velero
+        dockerfile: Dockerfile-velero.cape
         username: _json_key
         password: ${{secrets.GCR_DOCKER_REG}}        
