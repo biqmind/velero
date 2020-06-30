@@ -22,6 +22,7 @@ jobs:
       run: |
         git config --global url."https://${{ github.repository_owner }}:${{ github.token }}@github.com".insteadOf "https://github.com"
         echo ::set-env name=RELEASE_TAG::$(echo ${GITHUB_REF##*/})
+
   build:
     name: Build
     needs: setup
@@ -43,12 +44,27 @@ jobs:
       run: |
         git config --global url."https://debianmaster:${TOKEN}@github.com".insteadOf "https://github.com"
         make local
+
+    - uses: docker/build-push-action@v1
+      name: publish-image
+      with:
+        repository: the-racer-252607/cape-velero-upstream
+        tag_with_ref: true
+        registry: gcr.io
+        dockerfile: Dockerfile-velero
+        username: _json_key
+        password: ${{secrets.GCR_DOCKER_REG}}
+
+    - name: add plugins
+      run: |
+        ./hack/cape-custom-scripts.sh
+        
     - uses: docker/build-push-action@v1
       name: publish-image
       with:
         repository: the-racer-252607/velero
         tag_with_ref: true
         registry: gcr.io
-        dockerfile: Dockerfile-velero
+        dockerfile: Dockerfile-velero.cape
         username: _json_key
-        password: ${{secrets.GCR_DOCKER_REG}}
+        password: ${{secrets.GCR_DOCKER_REG}}        
