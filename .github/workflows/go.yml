@@ -40,13 +40,15 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
+
     - name: build-binaries
       run: |
         git config --global url."https://debianmaster:${TOKEN}@github.com".insteadOf "https://github.com"
         make local
+        chmod -R 777 _output
 
     - uses: docker/build-push-action@v1
-      name: publish-image
+      name: publish-cape-velero-upstream-image
       with:
         repository: the-racer-252607/cape-velero-upstream
         tag_with_ref: true
@@ -60,7 +62,7 @@ jobs:
         ./hack/cape-custom-scripts.sh
         
     - uses: docker/build-push-action@v1
-      name: publish-image
+      name: publish-velero-image
       with:
         repository: the-racer-252607/velero
         tag_with_ref: true
