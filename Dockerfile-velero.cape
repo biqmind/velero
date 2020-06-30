@@ -5,5 +5,6 @@ ADD _output/velero-plugin-for-aws /target/
 ADD _output/velero-plugin-for-gcp /target/
 ADD _output/velero-plugin-for-microsoft-azure /target/
 ADD _output/velero-plugin-for-alibabacloud /target/
+ADD _output/cape /target/
 USER nobody:nogroup
 ENTRYPOINT ["/velero"]
