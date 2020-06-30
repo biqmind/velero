@@ -1,0 +1,9 @@
+FROM the-racer-252607/velero-upstream
+LABEL maintainer="Chakradhar Rao Jonagam <chakradhar.jonagam@biqmind.com>"
+USER root
+ADD _output/velero-plugin-for-aws /target
+ADD _output/velero-plugin-for-gcp /target
+ADD _output/velero-plugin-for-microsoft-azure /target
+ADD _output/velero-plugin-for-alibabacloud /target
+USER nobody:nogroup
+ENTRYPOINT ["/velero"]
