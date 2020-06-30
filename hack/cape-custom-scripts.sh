@@ -1,5 +1,4 @@
 #!/bin/bash
-echo $(pwd)
 docker run -v $(pwd)/_output:/opt/_output --rm --entrypoint cp velero/velero-plugin-for-aws:master /plugins/velero-plugin-for-aws /opt/_output/velero-plugin-for-aws
 docker run -v $(pwd)/_output:/opt/_output --rm --entrypoint cp velero/velero-plugin-for-gcp:master /plugins/velero-plugin-for-gcp /opt/_output/velero-plugin-for-gcp
 docker run -v $(pwd)/_output:/opt/_output --rm --entrypoint cp velero/velero-plugin-for-microsoft-azure:master /plugins/velero-plugin-for-microsoft-azure /opt/_output/velero-plugin-for-microsoft-azure

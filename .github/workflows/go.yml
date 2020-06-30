@@ -48,7 +48,7 @@ jobs:
     - uses: docker/build-push-action@v1
       name: publish-image
       with:
-        repository: the-racer-252607/velero-upstream
+        repository: the-racer-252607/cape-velero-upstream
         tag_with_ref: true
         registry: gcr.io
         dockerfile: Dockerfile-velero
