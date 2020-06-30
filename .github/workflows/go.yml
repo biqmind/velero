@@ -39,24 +39,22 @@ jobs:
     - uses: docker/build-push-action@v1
       name: publish-cape-velero-upstream-image-branch
       with:
-        repository: the-racer-252607/cape-velero-upstream
+        repository: capesh/cape-velero-upstream
         tag_with_ref: true
-        registry: gcr.io
         dockerfile: Dockerfile-velero
-        username: _json_key
+        username: debianmaster
         add_git_labels: true
-        password: ${{secrets.GCR_DOCKER_REG}}
+        password: ${{secrets.REG_SECRET_DOCKER_HUB}}
 
     - uses: docker/build-push-action@v1
       name: publish-cape-velero-upstream-image-latest
       with:
-        repository: the-racer-252607/cape-velero-upstream
+        repository: capesh/cape-velero-upstream
         tags: latest
-        registry: gcr.io
         dockerfile: Dockerfile-velero
-        username: _json_key
+        username: debianmaster
         add_git_labels: true
-        password: ${{secrets.GCR_DOCKER_REG}}
+        password: ${{secrets.REG_SECRET_DOCKER_HUB}}
 
     - name: add plugins
       run: |
@@ -65,9 +63,8 @@ jobs:
     - uses: docker/build-push-action@v1
       name: publish-velero-image
       with:
-        repository: the-racer-252607/velero
+        repository: capesh/velero
         tag_with_ref: true
-        registry: gcr.io
         dockerfile: Dockerfile-velero.cape
-        username: _json_key
-        password: ${{secrets.GCR_DOCKER_REG}}        
+        username: debianmaster
+        password: ${{secrets.REG_SECRET_DOCKER_HUB}}        

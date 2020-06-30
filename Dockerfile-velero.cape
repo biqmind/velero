@@ -1,4 +1,4 @@
-FROM gcr.io/the-racer-252607/cape-velero-upstream
+FROM docker.io/capesh/cape-velero-upstream
 LABEL maintainer="Chakradhar Jonagam <chakradhar.jonagam@biqmind.com>"
 USER root
 ADD _output/velero-plugin-for-aws /target/
