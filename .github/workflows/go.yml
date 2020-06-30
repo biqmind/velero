@@ -13,19 +13,8 @@ on:
 
 jobs:
 
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-    - name: set git config
-      run: |
-        git config --global url."https://${{ github.repository_owner }}:${{ github.token }}@github.com".insteadOf "https://github.com"
-        echo ::set-env name=RELEASE_TAG::$(echo ${GITHUB_REF##*/})
-
   build:
     name: Build
-    needs: setup
     if: github.event.action != 'released'
     runs-on: ubuntu-latest
     steps:
@@ -48,13 +37,25 @@ jobs:
         chmod -R 777 _output
 
     - uses: docker/build-push-action@v1
-      name: publish-cape-velero-upstream-image
+      name: publish-cape-velero-upstream-image-branch
       with:
         repository: the-racer-252607/cape-velero-upstream
         tag_with_ref: true
         registry: gcr.io
         dockerfile: Dockerfile-velero
         username: _json_key
+        add_git_labels: true
+        password: ${{secrets.GCR_DOCKER_REG}}
+
+    - uses: docker/build-push-action@v1
+      name: publish-cape-velero-upstream-image-latest
+      with:
+        repository: the-racer-252607/cape-velero-upstream
+        tags: latest
+        registry: gcr.io
+        dockerfile: Dockerfile-velero
+        username: _json_key
+        add_git_labels: true
         password: ${{secrets.GCR_DOCKER_REG}}
 
     - name: add plugins
