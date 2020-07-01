@@ -67,4 +67,13 @@ jobs:
         tag_with_ref: true
         dockerfile: Dockerfile-velero.cape
         username: debianmaster
-        password: ${{secrets.REG_SECRET_DOCKER_HUB}}        
+        password: ${{secrets.REG_SECRET_DOCKER_HUB}}
+
+    - uses: docker/build-push-action@v1
+      name: publish-velero-image
+      with:
+        repository: capesh/velero
+        tags: latest,master
+        dockerfile: Dockerfile-velero.cape
+        username: debianmaster
+        password: ${{secrets.REG_SECRET_DOCKER_HUB}}         
