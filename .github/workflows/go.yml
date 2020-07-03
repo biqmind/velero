@@ -3,7 +3,7 @@ env:
   TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 on:
   push:
-    branches: [ restore-patch ]
+    branches: [ cape ]
 
   release:
     types:
